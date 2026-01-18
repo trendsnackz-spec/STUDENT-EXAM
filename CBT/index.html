@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CBT System</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{font-family:Arial;background:#0d6efd;margin:0}
+.box{background:#fff;max-width:900px;margin:20px auto;padding:20px;border-radius:10px}
+.hidden{display:none}
+button{background:#0d6efd;color:#fff;border:none;padding:6px;cursor:pointer}
+button.danger{background:#dc3545}
+input,select{padding:6px;margin:4px 0}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ccc;padding:6px}
+.nav button{margin:3px}
+</style>
+</head>
+
+<body>
+
+<!-- LOGIN -->
+<div class="box" id="loginBox">
+<h2>CBT LOGIN</h2>
+<select id="role">
+<option value="student">Student</option>
+<option value="admin">Admin</option>
+</select><br>
+<input id="username" placeholder="Username"><br>
+<input id="password" type="password" placeholder="Password"><br>
+<button onclick="login()">Login</button>
+</div>
+
+<!-- ADMIN -->
+<div class="box hidden" id="adminBox">
+<h2>ADMIN DASHBOARD</h2>
+
+<div class="nav">
+<button onclick="showAdmin('addQ')">Add Question</button>
+<button onclick="showAdmin('viewQ')">View Questions</button>
+<button onclick="showAdmin('addExam')">Add Exam</button>
+<button onclick="showAdmin('viewExam')">View Exams</button>
+<button onclick="showAdmin('addStudent')">Add Student</button>
+<button onclick="showAdmin('viewStudent')">View Students</button>
+<button onclick="showAdmin('viewResult')">View Results</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<div id="addQ" class="adminSection hidden">
+<h3>Add Question</h3>
+<input id="q" placeholder="Question"><br>
+<input id="a" placeholder="Option A"><br>
+<input id="b" placeholder="Option B"><br>
+<input id="c" placeholder="Option C"><br>
+<input id="d" placeholder="Option D"><br>
+<select id="ans"><option>A</option><option>B</option><option>C</option><option>D</option></select><br>
+<button onclick="addQuestion()">Save</button>
+</div>
+
+<div id="viewQ" class="adminSection hidden">
+<h3>Questions</h3>
+<table id="qTable"></table>
+</div>
+
+<div id="addExam" class="adminSection hidden">
+<h3>Add Exam</h3>
+<input id="examTitle" placeholder="Exam Title"><br>
+<input id="examTime" type="number" placeholder="Time (minutes)"><br>
+<button onclick="addExam()">Save</button>
+</div>
+
+<div id="viewExam" class="adminSection hidden">
+<h3>Exams</h3>
+<table id="examTable"></table>
+</div>
+
+<div id="addStudent" class="adminSection hidden">
+<h3>Add Student</h3>
+<input id="stuName" placeholder="Name"><br>
+<input id="stuUser" placeholder="Username"><br>
+<input id="stuPass" placeholder="Password"><br>
+<button onclick="addStudent()">Save</button>
+</div>
+
+<div id="viewStudent" class="adminSection hidden">
+<h3>Students</h3>
+<table id="studentTable"></table>
+</div>
+
+<div id="viewResult" class="adminSection hidden">
+<h3>Results</h3>
+<table id="resultTable"></table>
+</div>
+</div>
+
+<!-- EXAM -->
+<div class="box hidden" id="examBox">
+<h3 id="timer"></h3>
+<h3 id="questionText"></h3>
+<label><input type="radio" name="opt" value="A"> <span id="oa"></span></label>
+<label><input type="radio" name="opt" value="B"> <span id="ob"></span></label>
+<label><input type="radio" name="opt" value="C"> <span id="oc"></span></label>
+<label><input type="radio" name="opt" value="D"> <span id="od"></span></label><br>
+<button onclick="nextQuestion()">Next</button>
+</div>
+
+<!-- RESULT -->
+<div class="box hidden" id="resultBox">
+<h2>RESULT</h2>
+<p>Name: <span id="rName"></span></p>
+<p>Score: <span id="rScore"></span></p>
+<p>Status: <span id="rStatus"></span></p>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+let questions=JSON.parse(localStorage.getItem("questions"))||[];
+let exams=JSON.parse(localStorage.getItem("exams"))||[];
+let students=JSON.parse(localStorage.getItem("students"))||[];
+let results=JSON.parse(localStorage.getItem("results"))||[];
+
+let index=0,score=0,time=0,timerInt;
+
+// LOGIN
+function login(){
+let r=role.value,u=username.value,p=password.value;
+if(r==="admin"){
+if(u==="THE GREAT INSPIRATION"&&p==="222011"){show("adminBox")}
+else alert("Wrong admin login");
+}else{
+let s=students.find(x=>x.user===u&&x.pass===p);
+if(!s){alert("Invalid student");return;}
+localStorage.setItem("currentStudent",u);
+startExam();
+}
+}
+
+// ADMIN
+function showAdmin(id){
+document.querySelectorAll(".adminSection").forEach(x=>x.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+if(id==="viewQ")loadQTable();
+if(id==="viewExam")loadExamTable();
+if(id==="viewStudent")loadStudentTable();
+if(id==="viewResult")loadResultTable();
+}
+
+function addQuestion(){
+questions.push({q:q.value,a:a.value,b:b.value,c:c.value,d:d.value,ans:ans.value});
+localStorage.setItem("questions",JSON.stringify(questions));
+alert("Saved");
+}
+
+function deleteQuestion(i){
+questions.splice(i,1);
+localStorage.setItem("questions",JSON.stringify(questions));
+loadQTable();
+}
+
+function loadQTable(){
+qTable.innerHTML="<tr><th>#</th><th>Question</th><th>Action</th></tr>";
+questions.forEach((x,i)=>{
+qTable.innerHTML+=`<tr><td>${i+1}</td><td>${x.q}</td>
+<td><button class="danger" onclick="deleteQuestion(${i})">Delete</button></td></tr>`;
+});
+}
+
+function addExam(){
+exams.push({title:examTitle.value,time:examTime.value});
+localStorage.setItem("exams",JSON.stringify(exams));
+alert("Saved");
+}
+
+function deleteExam(i){
+exams.splice(i,1);
+localStorage.setItem("exams",JSON.stringify(exams));
+loadExamTable();
+}
+
+function loadExamTable(){
+examTable.innerHTML="<tr><th>#</th><th>Title</th><th>Action</th></tr>";
+exams.forEach((x,i)=>{
+examTable.innerHTML+=`<tr><td>${i+1}</td><td>${x.title}</td>
+<td><button class="danger" onclick="deleteExam(${i})">Delete</button></td></tr>`;
+});
+}
+
+function addStudent(){
+students.push({name:stuName.value,user:stuUser.value,pass:stuPass.value});
+localStorage.setItem("students",JSON.stringify(students));
+alert("Saved");
+}
+
+function deleteStudent(i){
+students.splice(i,1);
+localStorage.setItem("students",JSON.stringify(students));
+loadStudentTable();
+}
+
+function loadStudentTable(){
+studentTable.innerHTML="<tr><th>#</th><th>Name</th><th>Action</th></tr>";
+students.forEach((x,i)=>{
+studentTable.innerHTML+=`<tr><td>${i+1}</td><td>${x.name}</td>
+<td><button class="danger" onclick="deleteStudent(${i})">Delete</button></td></tr>`;
+});
+}
+
+function loadResultTable(){
+resultTable.innerHTML="<tr><th>Name</th><th>Score</th><th>Status</th></tr>";
+results.forEach(x=>{
+resultTable.innerHTML+=`<tr><td>${x.name}</td><td>${x.score}</td><td>${x.status}</td></tr>`;
+});
+}
+
+// EXAM
+function startExam(){
+if(questions.length===0||exams.length===0){alert("Exam not ready");return;}
+show("examBox");
+index=0;score=0;
+time=exams[0].time*60;
+loadQuestion();
+timerInt=setInterval(updateTimer,1000);
+}
+
+function loadQuestion(){
+if(index>=questions.length)return finishExam();
+let x=questions[index];
+questionText.innerText=x.q;
+oa.innerText=x.a;ob.innerText=x.b;oc.innerText=x.c;od.innerText=x.d;
+document.querySelectorAll('input[name="opt"]').forEach(o=>o.checked=false);
+}
+
+function nextQuestion(){
+let s=document.querySelector('input[name="opt"]:checked');
+if(s&&s.value===questions[index].ans)score++;
+index++;loadQuestion();
+}
+
+function updateTimer(){
+time--;
+timer.innerText="Time: "+Math.floor(time/60)+":"+String(time%60).padStart(2,"0");
+if(time<=0)finishExam();
+}
+
+function finishExam(){
+clearInterval(timerInt);
+let name=localStorage.getItem("currentStudent");
+let status=(score/questions.length*100)>=50?"PASS":"FAIL";
+results.push({name,score:score+"/"+questions.length,status});
+localStorage.setItem("results",JSON.stringify(results));
+show("resultBox");
+rName.innerText=name;
+rScore.innerText=score+"/"+questions.length;
+rStatus.innerText=status;
+}
+
+// UTIL
+function show(id){
+document.querySelectorAll(".box").forEach(b=>b.classList.add("hidden"));
+document.getElementById(id).classList.remove("hidden");
+}
+
+function logout(){
+localStorage.removeItem("currentStudent");
+show("loginBox");
+}
+</script>
+
+</body>
+</html>
